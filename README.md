@@ -1,6 +1,6 @@
 # Percolator • Perp Sim
 
-![Perp Sim Banner](banner.png)
+![Perp Sim Banner](banner.jpeg)
 
 A fast, self-contained **perp-style dashboard** with **live BTC/ETH prices**, a **synthetic order book**, and a **paper-trading engine**. It looks and feels like a CEX/DEX perp UI, without needing on-chain programs. Perfect for prototyping Solana perp UX (router/slab) while instruction handlers are still evolving.
 
