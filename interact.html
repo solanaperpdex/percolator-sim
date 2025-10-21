@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Percolator • Interact (Browser)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0b12; --panel:#0f1320; --panel2:#11162b;
+    --border:#252a3a; --ink:#e5e7eb; --muted:#9aa3b2;
+    --purple:#8b5cf6; --accent:#f59e0b; --good:#16a34a; --bad:#ef4444;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 "Inter",ui-sans-serif,system-ui}
+  .shell{max-width:1100px;margin:0 auto;padding:18px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .grid{display:grid;gap:12px}
+  .grid-2{grid-template-columns:1fr 1fr}
+  .grid-3{grid-template-columns:repeat(3,1fr)}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px}
+  label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
+  input,select,button,textarea{
+    background:#0e1220;border:1px solid var(--border);border-radius:10px;color:var(--ink);
+    padding:10px 12px;font:14px "Inter",ui-sans-serif;outline:none
+  }
+  input,select{width:100%}
+  button{cursor:pointer;background:#141a30}
+  button.primary{background:linear-gradient(90deg,#6d28d9,#8b5cf6);border:none}
+  button.ghost{background:#0e1220}
+  h1{margin:0 0 12px;font-size:18px;color:var(--purple)}
+  h2{margin:0 0 10px;font-size:15px;color:#c7d2fe}
+  small.muted{color:var(--muted)}
+  code.k{padding:2px 6px;border-radius:8px;background:#0d1020;border:1px solid var(--border);color:#cbd5e1}
+  table{width:100%;border-collapse:collapse}
+  th,td{border-bottom:1px solid var(--border);padding:8px 8px;text-align:left;font-size:13px}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .log{height:220px;overflow:auto;background:#0d1020;border:1px dashed var(--border);border-radius:12px;padding:10px;font-family:ui-monospace,Consolas,Menlo}
+  .pill{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid var(--border);background:#0b0f1d;font-size:12px}
+</style>
+</head>
+<body>
+<div class="shell">
+  <h1>Percolator • Interact (Browser)</h1>
+  <div class="card">
+    <div class="grid grid-3">
+      <div>
+        <label>RPC URL</label>
+        <input id="rpcUrl" value="http://127.0.0.1:8899" />
+      </div>
+      <div>
+        <label>Router Program ID</label>
+        <input id="routerId" value="RoutR1VdCpHqj89WEMJhb6TkGT9cPfr1rVjhM3e2YQr" />
+      </div>
+      <div>
+        <label>Slab Program ID</label>
+        <input id="slabId" value="SLabZ6PsDLh2X6HzEoqxFDMqCVcJXDKCNEYuPzUvGPk" />
+      </div>
+    </div>
+
+    <div class="grid grid-3" style="margin-top:10px">
+      <div>
+        <label>USER (defaults to payer)</label>
+        <input id="userPk" placeholder="Optional base58 pubkey" />
+      </div>
+      <div>
+        <label>MINT (defaults to USER)</label>
+        <input id="mintPk" placeholder="Optional base58 pubkey" />
+      </div>
+      <div>
+        <label>MARKET (slab seed)</label>
+        <input id="marketId" value="BTC-PERP" />
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <button class="primary" id="btnConnect">Connect RPC</button>
+      <button class="ghost" id="btnAirdrop" title="Devnet only">Airdrop 1 SOL (devnet)</button>
+      <span class="pill" id="payerInfo">PAYER: -</span>
+      <span class="pill" id="statusPill">Status: idle</span>
+    </div>
+    <small class="muted">Uses an <b>ephemeral in-browser keypair</b> each load. Don’t paste real secrets.</small>
+  </div>
+
+  <div class="grid grid-3" style="margin-top:12px">
+    <div class="card">
+      <h2>Presence</h2>
+      <div class="row" style="margin-bottom:10px">
+        <button class="primary" id="btnPresence">Check Program Presence</button>
+      </div>
+      <table id="presenceTbl">
+        <thead><tr><th>Account</th><th>Pubkey</th><th>Status</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>PDAs</h2>
+      <div class="row" style="margin-bottom:10px">
+        <button class="primary" id="btnDerive">Derive PDAs</button>
+      </div>
+      <table id="pdaTbl">
+        <thead><tr><th>Label</th><th>Address</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Account Metas</h2>
+      <div class="row" style="margin-bottom:10px">
+        <button class="primary" id="btnMetas">Fetch Metas</button>
+      </div>
+      <table id="metaTbl">
+        <thead><tr><th>Label</th><th>Owner</th><th class="num">Exec</th><th class="num">Data</th><th class="num">Lamports</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="grid grid-2" style="margin-top:12px">
+    <div class="card">
+      <h2>Simulate No-Op</h2>
+      <div class="row" style="margin-bottom:10px">
+        <button class="primary" id="btnSimRouter">Simulate Router</button>
+        <button class="primary" id="btnSimSlab">Simulate Slab</button>
+      </div>
+      <div class="log" id="logOutput"></div>
+    </div>
+
+    <div class="card">
+      <h2>Notes</h2>
+      <ul>
+        <li>Presence checks whether program accounts exist and are executable.</li>
+        <li>PDAs mirror the README seeds:
+          <ul>
+            <li>Router: <code class="k">vault</code>, <code class="k">escrow</code>, <code class="k">cap</code>, <code class="k">portfolio</code>, <code class="k">registry</code></li>
+            <li>Slab: <code class="k">slab</code> (market id), <code class="k">authority</code></li>
+          </ul>
+        </li>
+        <li>Simulate creates a tiny instruction (empty data) signed by the ephemeral payer; most programs will error, but logs are still useful.</li>
+        <li>Airdrop works on devnet RPCs, not on localnet main validator unless it implements a faucet.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- web3.js (global `solanaWeb3`) -->
+<script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
+<script>
+(() => {
+  const {
+    Connection, PublicKey, Keypair, Transaction, TransactionInstruction, SystemProgram, LAMPORTS_PER_SOL
+  } = solanaWeb3;
+
+  // UI refs
+  const el = (id) => document.getElementById(id);
+  const rpcUrl = el('rpcUrl'), routerId = el('routerId'), slabId = el('slabId');
+  const userPk = el('userPk'), mintPk = el('mintPk'), marketId = el('marketId');
+  const payerInfo = el('payerInfo'), statusPill = el('statusPill');
+  const presenceTbl = el('presenceTbl').querySelector('tbody');
+  const pdaTbl = el('pdaTbl').querySelector('tbody');
+  const metaTbl = el('metaTbl').querySelector('tbody');
+  const logOutput = el('logOutput');
+
+  let connection = null;
+  const payer = Keypair.generate(); // ephemeral
+  payerInfo.textContent = `PAYER: ${payer.publicKey.toBase58()}`;
+
+  const systemId = new PublicKey('11111111111111111111111111111111');
+  const memoId   = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
+
+  function setStatus(text) {
+    statusPill.textContent = `Status: ${text}`;
+  }
+  function log(...args) {
+    const line = args.map(v => (typeof v === 'string' ? v : JSON.stringify(v, null, 2))).join(' ');
+    logOutput.textContent += line + '\n';
+    logOutput.scrollTop = logOutput.scrollHeight;
+  }
+
+  function toPkOrNull(v) { try { return v ? new PublicKey(v) : null; } catch { return null; } }
+
+  function seedsU64LE(n) {
+    const b = new Uint8Array(8); const dv = new DataView(b.buffer); dv.setBigUint64(0, BigInt(n), true); return b;
+  }
+
+  const state = {
+    PDAS: null
+  };
+
+  async function connectRpc() {
+    try {
+      setStatus('connecting…');
+      connection = new Connection(rpcUrl.value.trim(), 'confirmed');
+      const version = await connection.getVersion();
+      setStatus(`connected (v${version['solana-core'] || '?'})`);
+      log('RPC Connected:', JSON.stringify(version));
+    } catch (e) {
+      setStatus('error');
+      log('RPC connect error:', e.message || e);
+    }
+  }
+
+  async function presence() {
+    if (!connection) await connectRpc();
+    const router = toPkOrNull(routerId.value.trim());
+    const slab   = toPkOrNull(slabId.value.trim());
+    presenceTbl.innerHTML = '';
+    async function getPresence(pk) {
+      try { const ai = await connection.getAccountInfo(pk); if (!ai) return 'not found'; return ai.executable ? 'executable program' : 'non-executable account'; }
+      catch (e) { return 'error: ' + (e.message || e); }
+    }
+    const rows = [
+      ['System', systemId],
+      ['Memo', memoId],
+      ['Router', router],
+      ['Slab', slab]
+    ];
+    for (const [label, pk] of rows) {
+      if (!pk) continue;
+      const st = await getPresence(pk);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${label}</td><td>${pk.toBase58()}</td><td>${st}</td>`;
+      presenceTbl.appendChild(tr);
+    }
+  }
+
+  function derivePDAs() {
+    const RID = new PublicKey(routerId.value.trim());
+    const SID = new PublicKey(slabId.value.trim());
+
+    const payerOrUser = userPk.value ? new PublicKey(userPk.value.trim()) : payer.publicKey;
+    const mint = mintPk.value ? new PublicKey(mintPk.value.trim()) : payerOrUser;
+
+    const marketSeed = new TextEncoder().encode(marketId.value.trim());
+    const [slabStatePda] = PublicKey.findProgramAddressSync([Buffer.from('slab'), marketSeed], SID);
+    const [authorityPda] = PublicKey.findProgramAddressSync([Buffer.from('authority'), slabStatePda.toBuffer()], SID);
+
+    const [vaultPda]     = PublicKey.findProgramAddressSync([Buffer.from('vault'), mint.toBuffer()], RID);
+    const [escrowPda]    = PublicKey.findProgramAddressSync([Buffer.from('escrow'), payerOrUser.toBuffer(), slabStatePda.toBuffer(), mint.toBuffer()], RID);
+    const [capPda]       = PublicKey.findProgramAddressSync([Buffer.from('cap'), payerOrUser.toBuffer(), slabStatePda.toBuffer(), mint.toBuffer(), seedsU64LE(1)], RID);
+    const [portfolioPda] = PublicKey.findProgramAddressSync([Buffer.from('portfolio'), payerOrUser.toBuffer()], RID);
+    const [registryPda]  = PublicKey.findProgramAddressSync([Buffer.from('registry')], RID);
+
+    state.PDAS = {
+      'Vault PDA': vaultPda,
+      'Escrow PDA': escrowPda,
+      'Cap PDA (nonce=1)': capPda,
+      'Portfolio PDA': portfolioPda,
+      'Registry PDA': registryPda,
+      'Slab State PDA': slabStatePda,
+      'Authority PDA': authorityPda,
+      _all: [vaultPda, escrowPda, capPda, portfolioPda, registryPda, slabStatePda, authorityPda]
+    };
+
+    pdaTbl.innerHTML = '';
+    for (const [label, pk] of Object.entries(state.PDAS)) {
+      if (label === '_all') continue;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${label}</td><td>${pk.toBase58()}</td>`;
+      pdaTbl.appendChild(tr);
+    }
+  }
+
+  async function fetchMetas() {
+    if (!connection) await connectRpc();
+    if (!state.PDAS) derivePDAs();
+
+    const entries = [
+      ['Router', new PublicKey(routerId.value.trim())],
+      ['Slab', new PublicKey(slabId.value.trim())],
+      ...Object.entries(state.PDAS).filter(([k]) => k !== '_all')
+    ];
+    metaTbl.innerHTML = '';
+
+    async function meta(pk) {
+      const ai = await connection.getAccountInfo(pk);
+      if (!ai) return null;
+      return { owner: ai.owner.toBase58(), exec: ai.executable, data: ai.data?.length || 0, lamports: ai.lamports };
+    }
+
+    for (const [label, pk] of entries) {
+      const m = await meta(pk);
+      const tr = document.createElement('tr');
+      if (!m) {
+        tr.innerHTML = `<td>${label}</td><td colspan="4">not found</td>`;
+      } else {
+        tr.innerHTML = `<td>${label}</td><td>${m.owner}</td><td class="num">${m.exec}</td><td class="num">${m.data}</td><td class="num">${m.lamports}</td>`;
+      }
+      metaTbl.appendChild(tr);
+    }
+  }
+
+  async function simulate(programPk) {
+    if (!connection) await connectRpc();
+    const ix = new TransactionInstruction({
+      keys: [{ pubkey: payer.publicKey, isSigner: true, isWritable: false }],
+      programId: programPk,
+      data: Buffer.alloc(0)
+    });
+    const tx = new Transaction().add(ix);
+    const { blockhash } = await connection.getLatestBlockhash();
+    tx.recentBlockhash = blockhash;
+    tx.feePayer = payer.publicKey;
+    tx.sign(payer);
+    try {
+      const res = await connection.simulateTransaction(tx, [payer]);
+      log('--- simulate ---');
+      log('program:', programPk.toBase58());
+      if (res.value?.logs) log(...res.value.logs);
+      log('err:', JSON.stringify(res.value.err));
+      log('--------------');
+    } catch (e) {
+      log('simulate error:', e.message || e);
+    }
+  }
+
+  async function airdrop() {
+    try {
+      if (!connection) await connectRpc();
+      const url = rpcUrl.value.trim();
+      if (!/devnet|solana-devnet|api\.devnet|8899/.test(url)) {
+        log('Airdrop is only for devnet/local faucet RPCs.');
+        return;
+      }
+      const sig = await connection.requestAirdrop(payer.publicKey, 1 * LAMPORTS_PER_SOL);
+      await connection.confirmTransaction(sig, 'confirmed');
+      const bal = await connection.getBalance(payer.publicKey);
+      log('Airdrop OK. Balance:', (bal / LAMPORTS_PER_SOL).toFixed(4), 'SOL');
+    } catch (e) {
+      log('Airdrop error:', e.message || e);
+    }
+  }
+
+  // Buttons
+  el('btnConnect').onclick = connectRpc;
+  el('btnPresence').onclick = presence;
+  el('btnDerive').onclick = derivePDAs;
+  el('btnMetas').onclick = fetchMetas;
+  el('btnSimRouter').onclick = () => simulate(new PublicKey(routerId.value.trim()));
+  el('btnSimSlab').onclick  = () => simulate(new PublicKey(slabId.value.trim()));
+  el('btnAirdrop').onclick  = airdrop;
+
+  // Autoconnect
+  connectRpc();
+})();
+</script>
+</body>
+</html>
